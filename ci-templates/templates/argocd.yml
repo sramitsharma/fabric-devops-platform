@@ -1,0 +1,28 @@
+# argocd.yml — CI never touches the cluster. It commits to the gitops repo;
+# ArgoCD (with signature verification on) pulls, syncs, self-heals.
+.gitops-bump:
+  image: alpine/git:latest
+  before_script:
+    - apk add --no-cache yq
+    - git clone "https://gitlab-ci-token:${GITOPS_TOKEN}@${GITOPS_REPO}" gitops-wc
+  script:
+    - cd gitops-wc
+    - yq -i ".image.digest = \"$(cat ../image.digest)\"" "envs/${ENV}/${APP_NAME}/values.yaml"
+    - git -c user.email=ci@platform commit -am "${ENV}: ${APP_NAME} ${CI_COMMIT_SHORT_SHA}"
+    - git push origin HEAD:main
+
+.argocd-wait:
+  image: argoproj/argocd:v2.12.0
+  script:
+    - argocd app wait "${ENV}-${APP_NAME}" --health --sync --timeout 600
+      --auth-token "$ARGOCD_TOKEN" --server "$ARGOCD_SERVER" --grpc-web
+
+replicator-deploy-dev:
+  stage: deploy-dev
+  extends: [ .gitops-bump, .env-dev, .rules-main ]
+  needs: [ sbom-and-sign ]
+
+replicator-wait-dev:
+  stage: verify-dev
+  extends: [ .argocd-wait, .env-dev, .rules-main ]
+  needs: [ replicator-deploy-dev ]

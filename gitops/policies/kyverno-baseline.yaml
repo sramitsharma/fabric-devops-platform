@@ -1,0 +1,34 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata: { name: platform-baseline }
+spec:
+  validationFailureAction: Enforce
+  rules:
+    - name: require-signed-images
+      match: { any: [ { resources: { kinds: [Pod] } } ] }
+      verifyImages:
+        - imageReferences: [ "registry.internal/data-platform/*" ]
+          attestors:
+            - entries:
+                - keyless:
+                    subject: "https://gitlab.internal/data-platform/*"
+                    issuer: "https://gitlab.internal"
+    - name: require-tenant-label-and-nonroot
+      match: { any: [ { resources: { kinds: [Pod], namespaceSelector:
+              { matchLabels: { type: tenant } } } } ] }
+      validate:
+        message: "tenant label + nonroot + no privilege escalation are mandatory"
+        pattern:
+          metadata: { labels: { tenant: "?*" } }
+          spec:
+            securityContext: { runAsNonRoot: true }
+            containers:
+              - securityContext: { allowPrivilegeEscalation: false }
+    - name: default-deny-then-allow
+      match: { any: [ { resources: { kinds: [Namespace] } } ] }
+      generate:
+        kind: NetworkPolicy
+        name: default-deny-all
+        namespace: "{{request.object.metadata.name}}"
+        data:
+          spec: { podSelector: {}, policyTypes: [Ingress, Egress] }

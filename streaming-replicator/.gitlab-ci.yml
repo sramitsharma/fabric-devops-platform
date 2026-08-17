@@ -1,0 +1,12 @@
+include:
+  - project: 'data-platform/ci-templates'
+    ref: v3.0.0
+    file:
+      - 'templates/base.yml'
+      - 'templates/quality.yml'
+      - 'templates/security.yml'
+      - 'templates/docker.yml'
+      - 'templates/argocd.yml'
+
+variables:
+  APP_NAME: streaming-replicator

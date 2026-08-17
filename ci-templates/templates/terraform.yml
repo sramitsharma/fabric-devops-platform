@@ -1,0 +1,40 @@
+# terraform.yml — plan is an ARTIFACT reviewers approve; OPA gates every plan.
+.tf-base:
+  image: hashicorp/terraform:1.9
+  extends: .oidc-azure
+  before_script:
+    - cd "envs/${ENV}"
+    - terraform init -backend-config="key=${ENV}.tfstate"
+
+tf-validate:
+  stage: validate
+  extends: [ .tf-base, .env-dev, .rules-mr ]
+  script: [ 'terraform fmt -check -recursive ../..', 'terraform validate' ]
+
+.tf-plan:
+  stage: plan
+  extends: .tf-base
+  script:
+    - terraform plan -var-file="${ENV}.tfvars" -out=tfplan
+    - terraform show -json tfplan > tfplan.json
+  artifacts:
+    paths: [ 'envs/${ENV}/tfplan', 'envs/${ENV}/tfplan.json' ]
+    expire_in: 1 day
+
+opa-plan-gate:
+  stage: plan
+  image: openpolicyagent/conftest:latest
+  script:
+    - conftest test envs/*/tfplan.json -p policy/
+      # policies deny: public network access, missing CMK, missing tenant/env
+      # tags, cross-tenant role assignments, non-versioned prod buckets
+
+.tf-apply:
+  extends: .tf-base
+  script: [ 'terraform apply -auto-approve tfplan' ]
+  resource_group: 'tf-${ENV}'      # serialise applies per env
+
+tf-plan-dev:     { extends: [ .tf-plan,  .env-dev,     .rules-main ] }
+tf-apply-dev:    { extends: [ .tf-apply, .env-dev,     .rules-main ],    stage: deploy-dev,     needs: [ tf-plan-dev, opa-plan-gate ] }
+tf-plan-prod:    { extends: [ .tf-plan,  .env-prod,    .rules-release ] }
+tf-apply-prod:   { extends: [ .tf-apply, .env-prod,    .rules-release ], stage: deploy-prod,    needs: [ tf-plan-prod, opa-plan-gate ] }

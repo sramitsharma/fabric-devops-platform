@@ -1,0 +1,15 @@
+# =============================================================================
+# data-quality.yml — reusable T3 gate: Soda checks + EH offset↔row reconciliation
+# =============================================================================
+.dq-soda:
+  image: $PYTHON_IMAGE
+  script:
+    - pip install --no-cache-dir soda-core soda-core-duckdb pyyaml
+    - soda scan -d "$DQ_DATASOURCE" -c dq/configuration.yml dq/checks/*.yml
+
+.dq-reconcile:
+  extends: .oidc-azure
+  image: $PYTHON_IMAGE
+  script:
+    - pip install --no-cache-dir azure-eventhub boto3 pyarrow
+    - python dq/reconcile_offsets.py --env "$DEPLOY_ENV" --tenant "$TENANT"

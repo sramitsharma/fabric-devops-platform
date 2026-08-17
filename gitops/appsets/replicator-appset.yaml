@@ -1,0 +1,42 @@
+# One ApplicationSet stamps a replicator per tenant per env from tenants.yaml.
+# Adding a tenant to the registry IS the deployment (after CI gates pass).
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: streaming-replicator
+  namespace: argocd
+spec:
+  generators:
+    - matrix:
+        generators:
+          - git:
+              repoURL: https://gitlab.internal/data-platform/tenant-registry.git
+              revision: main
+              files: [ { path: "tenants.yaml" } ]
+          - list:
+              elements:
+                - { env: dev }
+                - { env: test }
+                - { env: preprod }
+                - { env: prod }
+  template:
+    metadata:
+      name: '{{env}}-replicator-{{id}}'
+    spec:
+      project: data-platform-{{env}}
+      source:
+        repoURL: https://gitlab.internal/data-platform/gitops.git
+        path: charts/streaming-replicator
+        helm:
+          valueFiles:
+            - ../../envs/{{env}}/streaming-replicator/values.yaml
+          values: |
+            tenant: { id: "{{id}}" }
+            eh: { hub: "{{eventhubs.0}}" }
+            s3: { prefix: "{{s3_prefix}}" }
+      destination:
+        server: '{{env}}-cluster'
+        namespace: 'tenant-{{id}}'
+      syncPolicy:
+        automated: { prune: true, selfHeal: true }
+        syncOptions: [ CreateNamespace=true ]

@@ -1,0 +1,32 @@
+# docker.yml — reproducible build, SBOM, keyless signing. Deploy by DIGEST, never tag.
+build-image:
+  stage: build
+  image:
+    name: gcr.io/kaniko-project/executor:v1.23.2-debug
+    entrypoint: [""]
+  extends: .rules-main
+  script:
+    - /kaniko/executor
+      --context "$CI_PROJECT_DIR"
+      --dockerfile Dockerfile
+      --destination "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA"
+      --reproducible
+      --digest-file image.digest
+  artifacts:
+    paths: [ image.digest ]
+
+sbom-and-sign:
+  stage: build
+  image: alpine:3.20
+  extends: .rules-main
+  needs: [ build-image ]
+  id_tokens:
+    SIGSTORE_ID_TOKEN: { aud: sigstore }
+  script:
+    - apk add --no-cache cosign syft
+    - syft "$CI_REGISTRY_IMAGE@$(cat image.digest)" -o cyclonedx-json > sbom.json
+    - cosign sign --yes "$CI_REGISTRY_IMAGE@$(cat image.digest)"
+    - cosign attest --yes --predicate sbom.json --type cyclonedx
+      "$CI_REGISTRY_IMAGE@$(cat image.digest)"
+  artifacts:
+    paths: [ sbom.json ]

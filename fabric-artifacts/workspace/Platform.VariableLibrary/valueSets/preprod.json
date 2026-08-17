@@ -1,0 +1,10 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/variableLibrary/definition/valueSet/1.0.0/schema.json",
+  "name": "preprod",
+  "variableOverrides": [
+    { "name": "s3_endpoint",  "value": "https://s3.preprod.internal" },
+    { "name": "s3_bucket",    "value": "dp-preprod-landing" },
+    { "name": "eh_namespace", "value": "dp-preprod-ehns.servicebus.windows.net" },
+    { "name": "alert_channel","value": "#dp-alerts-preprod" }
+  ]
+}

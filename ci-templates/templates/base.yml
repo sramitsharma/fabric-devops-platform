@@ -1,0 +1,53 @@
+# base.yml — foundation inherited by every repo. Version this library with tags.
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/'
+
+stages:
+  - validate
+  - test
+  - security
+  - build
+  - plan
+  - deploy-dev
+  - verify-dev
+  - deploy-test
+  - dq-gate
+  - deploy-preprod
+  - perf-gate
+  - deploy-prod
+  - verify-prod
+
+default:
+  interruptible: true
+  retry:
+    max: 1
+    when: [runner_system_failure, stuck_or_timeout_failure]
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  FF_SCRIPT_SECTIONS: "true"
+
+# --- Zero-trust auth primitives (extend, never copy) ---
+.oidc-azure:
+  id_tokens:
+    AZURE_FEDERATED_TOKEN:
+      aud: "api://AzureADTokenExchange"
+  variables:
+    ARM_USE_OIDC: "true"
+    ARM_OIDC_TOKEN: $AZURE_FEDERATED_TOKEN
+    # ARM_CLIENT_ID / ARM_TENANT_ID / ARM_SUBSCRIPTION_ID come from
+    # protected, env-scoped CI/CD variables (IDs only — never secrets).
+
+.env-dev:     { environment: { name: dev },     variables: { ENV: dev } }
+.env-test:    { environment: { name: test },    variables: { ENV: test } }
+.env-preprod: { environment: { name: preprod }, variables: { ENV: preprod } }
+.env-prod:    { environment: { name: prod },    variables: { ENV: prod } }
+# 'preprod' and 'prod' MUST be configured as GitLab Protected Environments
+# with required approvers → this is tollgates T4/T5. No YAML can bypass it.
+
+.rules-mr:      { rules: [ { if: '$CI_PIPELINE_SOURCE == "merge_request_event"' } ] }
+.rules-main:    { rules: [ { if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH' } ] }
+.rules-release: { rules: [ { if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/' } ] }

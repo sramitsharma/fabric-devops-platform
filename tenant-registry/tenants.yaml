@@ -1,0 +1,32 @@
+# Onboarding a tenant = one reviewed MR to this file. Terraform, fabric-cicd
+# and the ArgoCD ApplicationSet all fan out from here. Nothing else to touch.
+platform_workspaces:
+  dev:     "aaaa0000-0000-0000-0000-00000000dev1"
+  test:    "aaaa0000-0000-0000-0000-0000000test1"
+  preprod: "aaaa0000-0000-0000-0000-000000prepr1"
+  prod:    "aaaa0000-0000-0000-0000-00000000prod"
+
+tenants:
+  - id: acme
+    tier: standard
+    envs: [dev, test, preprod, prod]
+    eventhubs: [orders, telemetry]
+    throughput_units: 2
+    s3_prefix: acme
+    data_residency: uksouth
+    gold_workspaces:
+      dev:     "bbbb0000-0000-0000-0000-00000000dev1"
+      test:    "bbbb0000-0000-0000-0000-0000000test1"
+      preprod: "bbbb0000-0000-0000-0000-000000prepr1"
+      prod:    "bbbb0000-0000-0000-0000-00000000prod"
+  - id: globex
+    tier: premium            # premium ⇒ dedicated EH namespace via Terraform
+    envs: [dev, test, prod]
+    eventhubs: [payments]
+    throughput_units: 8
+    s3_prefix: globex
+    data_residency: uksouth
+    gold_workspaces:
+      dev:  "cccc0000-0000-0000-0000-00000000dev1"
+      test: "cccc0000-0000-0000-0000-0000000test1"
+      prod: "cccc0000-0000-0000-0000-00000000prod"

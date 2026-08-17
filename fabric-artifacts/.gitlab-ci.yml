@@ -1,0 +1,13 @@
+# Thin consumer — ALL logic lives in the versioned template library (DRY).
+include:
+  - project: 'data-platform/ci-templates'
+    ref: v3.0.0                         # pinned: template upgrades are deliberate MRs
+    file:
+      - 'templates/base.yml'
+      - 'templates/quality.yml'
+      - 'templates/security.yml'
+      - 'templates/fabric-deploy.yml'
+
+variables:
+  APP_NAME: fabric-artifacts
+  TENANT_REGISTRY_PATH: tenant-registry/tenants.yaml

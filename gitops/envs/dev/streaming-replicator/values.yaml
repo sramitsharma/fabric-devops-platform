@@ -1,0 +1,14 @@
+image:
+  repository: registry.gitlab.example.com/data-platform/streaming-replicator
+  digest: "set-by-ci"   # bumped by .gitops-bump; digest-pinned, cosign-verified by Kyverno
+resources:
+  driver:   { cores: 1, memory: 2g }
+  executor: { cores: 2, memory: 4g, instances: 2 }
+checkpoint:
+  basePath: abfss://checkpoints@ckptdpdev.dfs.core.windows.net
+s3:
+  endpoint: https://s3.dev.internal
+  bucket: dp-dev-landing
+security:
+  runAsNonRoot: true
+  workloadIdentity: true    # per-tenant federated identity, no secrets mounted

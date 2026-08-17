@@ -1,0 +1,37 @@
+# security.yml — T1: every job is BLOCKING. Vulnerability-free is a gate, not a hope.
+secrets-scan:
+  stage: security
+  image: zricethezav/gitleaks:latest
+  script: [ 'gitleaks detect --source . --redact --exit-code 1' ]
+  needs: []
+
+sast:
+  stage: security
+  image: returntocorp/semgrep
+  script: [ 'semgrep ci --config auto --error' ]
+  needs: []
+
+deps-and-fs-scan:
+  stage: security
+  image: aquasec/trivy:latest
+  script:
+    - trivy fs --scanners vuln,misconfig,secret --severity HIGH,CRITICAL --exit-code 1 .
+  needs: []
+
+iac-scan:
+  stage: security
+  image: bridgecrew/checkov:latest
+  rules:
+    - exists: [ '**/*.tf' ]
+  script: [ 'checkov -d . --compact --quiet --soft-fail-on LOW' ]
+  needs: []
+
+container-scan:
+  stage: security
+  image: aquasec/trivy:latest
+  rules:
+    - exists: [ 'Dockerfile' ]
+  needs: [ build-image ]
+  script:
+    - trivy image --severity HIGH,CRITICAL --exit-code 1
+      --ignore-unfixed "$CI_REGISTRY_IMAGE@$(cat image.digest)"

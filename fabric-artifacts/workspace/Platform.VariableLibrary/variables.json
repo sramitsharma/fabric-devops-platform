@@ -1,0 +1,10 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/variableLibrary/definition/variables/1.0.0/schema.json",
+  "variables": [
+    { "name": "s3_endpoint",        "type": "String",  "value": "https://s3.dev.internal" },
+    { "name": "s3_bucket",          "type": "String",  "value": "dp-dev-landing" },
+    { "name": "eh_namespace",       "type": "String",  "value": "dp-dev-ehns.servicebus.windows.net" },
+    { "name": "dq_null_threshold",  "type": "Integer", "value": 5 },
+    { "name": "alert_channel",      "type": "String",  "value": "#dp-alerts-dev" }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/variableLibrary/definition/valueSet/1.0.0/schema.json",
+  "name": "prod",
+  "variableOverrides": [
+    { "name": "s3_endpoint",  "value": "https://s3.prod.internal" },
+    { "name": "s3_bucket",    "value": "dp-prod-landing" },
+    { "name": "eh_namespace", "value": "dp-prod-ehns.servicebus.windows.net" },
+    { "name": "alert_channel","value": "#dp-alerts-prod" }
+  ]
+}

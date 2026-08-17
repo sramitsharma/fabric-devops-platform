@@ -1,0 +1,21 @@
+# quality.yml — T0 support: lint + unit tests + coverage floor
+lint:
+  stage: validate
+  image: python:3.12-slim
+  extends: .rules-mr
+  script:
+    - pip install --no-cache-dir ruff yamllint
+    - ruff check .
+    - yamllint -s .
+  needs: []
+
+unit-tests:
+  stage: test
+  image: python:3.12-slim
+  script:
+    - pip install --no-cache-dir -r requirements.txt -r requirements-dev.txt
+    - pytest --cov=src --cov-fail-under=80 --junitxml=report.xml
+  coverage: '/TOTAL.*\s+(\d+%)$/'
+  artifacts:
+    reports: { junit: report.xml }
+  needs: []

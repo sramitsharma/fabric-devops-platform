@@ -1,0 +1,10 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/variableLibrary/definition/valueSet/1.0.0/schema.json",
+  "name": "test",
+  "variableOverrides": [
+    { "name": "s3_endpoint",  "value": "https://s3.test.internal" },
+    { "name": "s3_bucket",    "value": "dp-test-landing" },
+    { "name": "eh_namespace", "value": "dp-test-ehns.servicebus.windows.net" },
+    { "name": "alert_channel","value": "#dp-alerts-test" }
+  ]
+}

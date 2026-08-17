@@ -1,0 +1,56 @@
+# fabric-deploy.yml — deploys Fabric items via fabric-cicd (Microsoft-supported).
+# Variable Libraries carry per-environment config INSIDE Fabric; parameter.yml
+# handles anything Variable Libraries can't (e.g. workspace-scoped GUIDs).
+# Auth: GitLab OIDC → Entra Workload Identity Federation. Zero stored secrets.
+.fabric-deploy:
+  image: python:3.12-slim
+  extends: .oidc-azure
+  variables:
+    ITEM_TYPES: "VariableLibrary,Lakehouse,Environment,Notebook,DataPipeline,SemanticModel,Report"
+  before_script:
+    - pip install --no-cache-dir fabric-cicd azure-identity pyyaml
+  script:
+    # Writes federated token to file for ClientAssertionCredential
+    - echo "$AZURE_FEDERATED_TOKEN" > /tmp/fed_token
+    - python deploy/deploy.py
+        --environment "$ENV"
+        --repo-dir workspace
+        --item-types "$ITEM_TYPES"
+        --tenant-registry "$TENANT_REGISTRY_PATH"
+
+fabric-deploy-dev:
+  extends: [ .fabric-deploy, .env-dev, .rules-main ]
+  stage: deploy-dev
+
+fabric-smoke-dev:                      # T2 — verify, don't assume
+  stage: verify-dev
+  image: python:3.12-slim
+  extends: [ .oidc-azure, .env-dev ]
+  needs: [ fabric-deploy-dev ]
+  script:
+    - pip install --no-cache-dir -r tests/requirements.txt
+    - pytest tests/smoke --env dev     # runs a canary notebook via Fabric REST
+                                       # Job Scheduler API and asserts success
+
+fabric-deploy-test:
+  extends: [ .fabric-deploy, .env-test, .rules-main ]
+  stage: deploy-test
+  needs: [ fabric-smoke-dev ]
+
+fabric-dq-gate:                        # T3 — Soda contract checks against TEST
+  stage: dq-gate
+  image: python:3.12-slim
+  extends: [ .oidc-azure, .env-test ]
+  needs: [ fabric-deploy-test ]
+  script:
+    - pip install --no-cache-dir soda-core-spark-df
+    - python tests/dq/run_soda.py --env test --contracts contracts/
+
+fabric-deploy-preprod:
+  extends: [ .fabric-deploy, .env-preprod, .rules-release ]
+  stage: deploy-preprod                # protected env → manual approval (T4)
+
+fabric-deploy-prod:
+  extends: [ .fabric-deploy, .env-prod, .rules-release ]
+  stage: deploy-prod                   # protected env + approvers (T5)
+  needs: [ fabric-deploy-preprod ]
